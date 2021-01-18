@@ -150,13 +150,11 @@ class NutritionUSDAIndex:
         self.__last_search__ = search_text
         self.__override_search__ = False # turn back on search handling!
 
-    def get_selected_usda_item (self):
+    def get_selected_usda_item(self):
         if len(self.searchvw)==1:
-            nut = self.searchvw[0].ndbno
-        else:
-            mod,itr = self.usdaTreeview.get_selection().get_selected()
-            nut = mod.get_value(itr,0)
-        return nut
+            return self.searchvw[0].ndbno
+        mod,itr = self.usdaTreeview.get_selection().get_selected()
+        return mod.get_value(itr,0)
 
     def _setup_nuttree_ (self):
         """Set up our treeview with USDA nutritional equivalents"""
@@ -224,12 +222,9 @@ class NutritionUSDAIndex:
         self.nutrition_store.change_view(self.searchvw)
         self.nutrition_store.set_page(0)
 
-    def food_group_filter_changed_cb (self, fgcb):
+    def food_group_filter_changed_cb(self, fgcb):
         food_group = cb.cb_get_active_text(fgcb)
-        if food_group==self.ALL_GROUPS:
-            self.group = None
-        else:
-            self.group = food_group
+        self.group = None if food_group==self.ALL_GROUPS else food_group
         GObject.idle_add(self.search)
 
 class NutritionInfoDruid (GObject.GObject):
@@ -403,7 +398,7 @@ class NutritionInfoDruid (GObject.GObject):
         self.set_density_info(nutalias)
         self.info_nutalias = nutalias
 
-    def set_density_info (self, nutalias):
+    def set_density_info(self, nutalias):
         densities,extra_units = self.nd.get_conversions(nutalias.ingkey)
         density_texts = []
         for k,v in list(densities.items()):
@@ -419,9 +414,9 @@ class NutritionInfoDruid (GObject.GObject):
             extra_units_text or 'None'
             )
         others = self.rd.fetch_all(self.rd.nutritionconversions_table,ingkey=nutalias.ingkey)
-        other_label = '\n'.join(['%s: %.1f g'%(
+        other_label = '\n'.join('%s: %.1f g'%(
             conv.unit or '100 %s'%_('ml'),1.0/conv.factor
-            ) for conv in others])
+            ) for conv in others)
         if others:
             self.populate_custom_equivalents_table(others)
         else:
@@ -867,7 +862,7 @@ class NutritionInfoDruid (GObject.GObject):
 
     ### BEGIN CALLBACKS TO WALK THROUGH INGREDIENTS
 
-    def add_ingredients (self, inglist, full_inglist=[]):
+    def add_ingredients(self, inglist, full_inglist=[]):
         """Add a list of ingredients for our druid to guide the user through.
 
         Our ingredient list is in the following form for, believe it
@@ -891,13 +886,12 @@ class NutritionInfoDruid (GObject.GObject):
         # to start, we take our first ing
         self.inglist = inglist
         if not full_inglist:
+            self.full_inglist = []
             if self.rec:
-                self.full_inglist = []
                 for i in self.rd.get_ings(self.rec):
                     self.full_inglist.append(i.ingkey)
                     self.def_ingredient_amounts[i.ingkey] = (i.amount,i.unit)
             else:
-                self.full_inglist = []
                 for ingkey,amounts_and_units in self.inglist:
                     self.full_inglist.append(ingkey)
                     if amounts_and_units:

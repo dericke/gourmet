@@ -95,8 +95,7 @@ def pixbuf_to_image(pixbuf: Pixbuf) -> Image.Image:
     mode = "RGB"
     if pixbuf.props.has_alpha:
         mode = "RGBA"
-    image = Image.frombytes(mode, (width, height), data, "raw", mode, stride)
-    return image
+    return Image.frombytes(mode, (width, height), data, "raw", mode, stride)
 
 
 def image_to_pixbuf(image: Image.Image) -> Pixbuf:

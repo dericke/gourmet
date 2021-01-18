@@ -61,10 +61,13 @@ def get_ingredient_hash (ings, conv):
     #print 'Hash',ings,m.hexdigest()
     return m.hexdigest()
 
-def get_recipe_hash (recipe_object):
-    recstrings = []
-    for field in REC_FIELDS:
-        if getattr(recipe_object,field): recstrings.append(getattr(recipe_object,field))
+def get_recipe_hash(recipe_object):
+    recstrings = [
+        getattr(recipe_object, field)
+        for field in REC_FIELDS
+        if getattr(recipe_object, field)
+    ]
+
     recstring = '\n'.join(recstrings)
     recstring = recstring.strip()
     recstring = recstring.lower()
@@ -104,13 +107,13 @@ def format_ings (rec, rd):
     alist = rd.order_ings(ings)
     return format_ing_text(alist,rd)
 
-def apply_line_markup (line, markup):
+def apply_line_markup(line, markup):
     out = ''
     current_tag = ''
     if len(markup) < len(line):
         markup += ' '*(len(line)-len(markup))
     for n in range(len(line)):
-        if markup[n]==' ' or markup[n]=='\n':
+        if markup[n] in [' ', '\n']:
             tag = None
         elif markup[n]=='+':
             tag = 'add'
@@ -183,7 +186,7 @@ def diff_recipes (rd,recs):
             diffs[attr]=vals
     return diffs
 
-def merge_recipes (rd, recs):
+def merge_recipes(rd, recs):
     """Return two dictionaries representing the differences between recs.
 
     The first dictionary contains items that are blank in one recipe
@@ -205,13 +208,11 @@ def merge_recipes (rd, recs):
                 if ((isinstance(v, str) and isinstance(value, str))
                     and v.lower()==value.lower()):
                     continue
-                else:
-                    conflict = True
-                    break
+                conflict = True
+                break
         if conflict: continue
-        else:
-            if value: my_recipe[attr]=value
-            del diffs[attr]
+        if value: my_recipe[attr]=value
+        del diffs[attr]
     return my_recipe,diffs
 
 def format_ingdiff_line (s):

@@ -62,10 +62,7 @@ class Star (platypus.Flowable):
 
     def wrap(self, availW, availH):
         if self.size > availW or self.size > availH:
-            if availW > availH:
-                self.size = availH
-            else:
-                self.size = availW
+            self.size = min(availW, availH)
         return (self.size,self.size)
 
     def draw (self):
@@ -84,7 +81,7 @@ class Star (platypus.Flowable):
         p.close()
         canvas.drawPath(p,fill=1)
 
-    def draw_half_star (self, inner_length=1*inch, outer_length=2*inch, points=5, origin=None):
+    def draw_half_star(self, inner_length=1*inch, outer_length=2*inch, points=5, origin=None):
         canvas = self.canv
         canvas.setLineWidth(0)
         if not origin: canvas.translate(self.size*0.5,self.size*0.5)
@@ -97,8 +94,7 @@ class Star (platypus.Flowable):
         #print 'Drawing star with radius',outer_length,'(moving origin ',origin,')'
         for theta in range(0, 360, 360 // (points * 2)):
             if 0 < theta < 180: continue
-            if inner: r = inner_length
-            else: r = outer_length
+            r = inner_length if inner else outer_length
             x = (math.sin(math.radians(theta)) * r)
             y = (math.cos(math.radians(theta)) * r)
             #print 'POINT:',x,y
@@ -111,7 +107,7 @@ class Star (platypus.Flowable):
         p.close()
         canvas.drawPath(p,fill=1)
 
-    def draw_star (self, inner_length=1*inch, outer_length=2*inch, points=5, origin=None):
+    def draw_star(self, inner_length=1*inch, outer_length=2*inch, points=5, origin=None):
         canvas = self.canv
         canvas.setLineWidth(0)
         if not origin: canvas.translate(self.size*0.5,self.size*0.5)
@@ -123,8 +119,7 @@ class Star (platypus.Flowable):
         is_origin = True
         #print 'Drawing star with radius',outer_length,'(moving origin ',origin,')'
         for theta in range(0, 360, 360 // (points * 2)):
-            if inner: r = inner_length
-            else: r = outer_length
+            r = inner_length if inner else outer_length
             x = (math.sin(math.radians(theta)) * r)
             y = (math.cos(math.radians(theta)) * r)
             #print 'POINT:',x,y
@@ -394,7 +389,7 @@ class PdfWriter:
 
 class PdfExporter (exporter.exporter_mult, PdfWriter):
 
-    def __init__ (self, rd, r, out,
+    def __init__(self, rd, r, out,
                   doc=None,
                   styleSheet=None,
                   txt=[],
@@ -403,10 +398,7 @@ class PdfExporter (exporter.exporter_mult, PdfWriter):
                   **kwargs):
         self.all_recipes = all_recipes
         PdfWriter.__init__(self)
-        if isinstance(out, str):
-            self.out = open(out, 'wb')
-        else:
-            self.out = out
+        self.out = open(out, 'wb') if isinstance(out, str) else out
         if not doc:
             self.setup_document(self.out,**pdf_args)
             self.multidoc = False
@@ -635,23 +627,22 @@ class PdfExporter (exporter.exporter_mult, PdfWriter):
             attributes=' firstLineIndent="-%(hanging)s" leftIndent="%(hanging)s"'%locals()
             )
 
-    def write_ingref (self, amount, unit, item, refid, optional):
-        if refid in [r.id for r in self.all_recipes]:
-            txt = ""
-            for blob in [amount,unit,item,(optional and _('optional') or '')]:
-                if blob == item:
-                    blob = '<link href="r%s">'%refid + blob + '</link>'
-                elif not blob:
-                    continue
-                if txt: txt += " %s"%blob
-                else: txt = blob
-            hanging = inch*0.25
-            self.write_paragraph(
-                txt,
-                attributes=' firstLineIndent="-%(hanging)s" leftIndent="%(hanging)s"'%locals()
-                )
-        else:
+    def write_ingref(self, amount, unit, item, refid, optional):
+        if refid not in [r.id for r in self.all_recipes]:
             return self.write_ing(amount,unit,item,optional=optional)
+        txt = ""
+        for blob in [amount,unit,item,(optional and _('optional') or '')]:
+            if blob == item:
+                blob = '<link href="r%s">'%refid + blob + '</link>'
+            elif not blob:
+                continue
+            if txt: txt += " %s"%blob
+            else: txt = blob
+        hanging = inch*0.25
+        self.write_paragraph(
+            txt,
+            attributes=' firstLineIndent="-%(hanging)s" leftIndent="%(hanging)s"'%locals()
+            )
 
 class PdfExporterMultiDoc (exporter.ExporterMultirec, PdfWriter):
     def __init__ (self, rd, recipes, out, conv=None, pdf_args=DEFAULT_PDF_ARGS,

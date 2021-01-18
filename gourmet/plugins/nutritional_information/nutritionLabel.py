@@ -308,7 +308,7 @@ class NutritionLabel (Gtk.VBox):
         self.edit_missing_button = b
         return hb
 
-    def set_missing_label_text (self,missing,total):
+    def set_missing_label_text(self,missing,total):
         self.missingLabelLabel.set_markup(
             '<span color="red" style="italic">' +\
             _('''Missing nutritional information\nfor %(missing)s of %(total)s ingredients.''')%locals()+\
@@ -317,8 +317,7 @@ class NutritionLabel (Gtk.VBox):
             self.missingLabelLabel.hide()
         else:
             self.missingLabelLabel.show()
-        if missing==total: method = 'hide'
-        else: method = 'show'
+        method = 'hide' if missing==total else 'show'
         getattr(self.main_table,method)()
         getattr(self.nutexpander,method)()
         getattr(self.yieldLabel,method)()
@@ -517,20 +516,20 @@ if __name__ == '__main__':
 
         def __len__ (self): return 7
 
-        def __getattr__ (self,n):
+        def __getattr__(self,n):
             if n=='has_vapor':
                 return self.has_vapor
             if n=='_get_vapor':
                 return self._get_vapor_
             if n in self.__attdict__:
-                return self.__attdict__[n]
+                pass
             elif n=='kcal':
                 self.__attdict__[n]=self.carb*4+self.sugar*4+self.protein*4+self.famono*9+self.fasat*9
-                return self.__attdict__[n]
             else:
                 #n = random.randint(0,100)
                 self.__attdict__[n]=random.randint(0,100)
-                return self.__attdict__[n]
+
+            return self.__attdict__[n]
 
         def has_vapor (self): True
 

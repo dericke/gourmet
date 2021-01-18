@@ -166,8 +166,11 @@ class TimeEntry(ValidatingEntry):
             partial_unit = ''
 
         has_number = NUMBER_MATCHER.match(number)
-        has_unit = any([unit.startswith(partial_unit)
-                        for unit in self.conv.unit_to_seconds.keys()])
+        has_unit = any(
+            unit.startswith(partial_unit)
+            for unit in self.conv.unit_to_seconds.keys()
+        )
+
         if not (has_number and has_unit):
             return self._error_msg
 

@@ -174,7 +174,7 @@ class EdfgXml(exporter.exporter_mult, EdfgXmlBase):
                       refid=None, optional=False):
         print('write_ingref not implemented yet')
 
-    def write_ing (self, amount=1, unit=None, item=None,
+    def write_ing(self, amount=1, unit=None, item=None,
                    key=None, optional=False):
         # item's are the same as keys in cozyland...
         if not key: key = item
@@ -198,12 +198,13 @@ class EdfgXml(exporter.exporter_mult, EdfgXmlBase):
         e_parent.appendChild(e)
         e_parent = e
         e_amount = self.xmlDoc.createElement('amount')
-        if gram_amount:
-            if not isinstance(gram_amount, (tuple, list)) or None not in gram_amount:
-                e_amount.appendChild(
-                    self.quantity_element(gram_amount,
-                                          'gram')
-                    )
+        if gram_amount and (
+            not isinstance(gram_amount, (tuple, list)) or None not in gram_amount
+        ):
+            e_amount.appendChild(
+                self.quantity_element(gram_amount,
+                                      'gram')
+                )
         e_parent.appendChild(e_amount)
         e_displayamount = self.xmlDoc.createElement('displayamount')
         e_displayamount.appendChild(
@@ -216,10 +217,10 @@ class EdfgXml(exporter.exporter_mult, EdfgXmlBase):
         e_item.appendChild(t)
         if ndbno:
             e_usda = self.xmlDoc.createElement('usdaid')
-            if ndbno:
-                t = self.xmlDoc.createTextNode("%05i"%ndbno)
-                e_usda.appendChild(t)
-                e_parent.appendChild(e_usda)
+        if ndbno:
+            t = self.xmlDoc.createTextNode("%05i"%ndbno)
+            e_usda.appendChild(t)
+            e_parent.appendChild(e_usda)
 
     def write_grouphead (self, name):
         print('write_grouphead not implemented yet')

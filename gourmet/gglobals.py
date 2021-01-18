@@ -111,11 +111,6 @@ def add_icon(file_name, stock_id, label=None, modifier=0, keyval=0):
     icon_factory.add_default()
     # TODO: fix adding icons
     return
-    Gtk.stock_add([(stock_id,
-                    label,
-                    modifier,
-                    keyval,
-                    "")])
 
 
 for filename, stock_id, label, modifier, keyval in [

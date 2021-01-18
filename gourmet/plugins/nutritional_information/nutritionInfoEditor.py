@@ -260,7 +260,7 @@ class NutStore (pageable_store.PageableViewStore):
         return vw + extras
 
 
-    def limit  (self, txt, column='ingkey', search_options={}):
+    def limit(self, txt, column='ingkey', search_options={}):
         if not txt:
             vw = self.get_vw(self.search_kwargs)
         else:
@@ -271,10 +271,7 @@ class NutStore (pageable_store.PageableViewStore):
                 s = ('LIKE','%'+txt.replace('%','%%')+'%')
                 extras_search = '.*'+re.escape(txt)+'.*'
             kwargs = self.search_kwargs.copy()
-            if column in kwargs:
-                kwargs[column] = ('and',[kwargs[column],s])
-            else:
-                kwargs[column]=s
+            kwargs[column] = ('and', [kwargs[column],s]) if column in kwargs else s
             vw = self.get_vw(kwargs,extras_search)
         self.change_view(vw)
 
