@@ -337,7 +337,7 @@ class KeyEditor:
             print('WTF! WE SHOULD NEVER LAND HERE!',field,value)
             raise Exception("WTF ERROR")
 
-    def applyEntriesCB (self, *args):
+    def applyEntriesCB(self, *args):
         newdic = {}
         for k,e in list(self.entries.items()):
             txt = e.get_text()
@@ -373,7 +373,8 @@ class KeyEditor:
             # in which case the changes would already be inherited by
             # the current row (i.e. if the tree has been expanded and
             # all rows have been selected).
-            parent = mod.iter_parent(itr); already_updated = False
+            parent = mod.iter_parent(itr)
+            already_updated = False
             while parent:
                 if parent in updated_iters:
                     already_updated = True
@@ -383,17 +384,16 @@ class KeyEditor:
             # Now that we're sure we really need to update...
             curdic,field = self.get_dic_describing_iter(itr)
             curkey = self.treeModel.get_value(itr,self.VALUE_COL)
-            if not already_updated:
-                self.rd.update_by_criteria(
-                    self.rd.ingredients_table,
-                    curdic,
-                    newdic,
+            self.rd.update_by_criteria(
+                self.rd.ingredients_table,
+                curdic,
+                newdic,
+                )
+            if 'ingkey' in curdic and 'ingkey' in newdic:
+                self.rd.delete_by_criteria(
+                    self.rd.keylookup_table,
+                    {'ingkey':curdic['ingkey']}
                     )
-                if 'ingkey' in curdic and 'ingkey' in newdic:
-                    self.rd.delete_by_criteria(
-                        self.rd.keylookup_table,
-                        {'ingkey':curdic['ingkey']}
-                        )
         self.resetTree()
             #self.update_iter(itr,newdic) # A recursive method that
             #                             # will set values for us and
@@ -531,17 +531,14 @@ class KeyStore (pageable_store.PageableTreeStore,pageable_store.PageableViewStor
                                                    ],
                                                   per_page=per_page)
 
-    def reset_views (self):
+    def reset_views(self):
         if self.__last_limit_text:
             txt = self.__last_limit_text
             if hasattr(self,'use_regexp') and self.use_regexp:
                 s = {'search':txt,'operator':'REGEXP'}
             else:
                 s = {'search':'%'+txt.replace('%','%%')+'%','operator':'LIKE'}
-            if self.search_by == _('item'):
-                s['column']='item'
-            else:
-                s['column']='ingkey'
+            s['column'] = 'item' if self.search_by == _('item') else 'ingkey'
             self.view = self.rd.get_ingkeys_with_count(s)
         else:
             self.view = self.rd.get_ingkeys_with_count()

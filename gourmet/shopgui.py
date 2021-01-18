@@ -251,7 +251,7 @@ class IngredientAndPantryList:
         # reset the first time
         self.slTree_sel_changed_cb(self.slTree.get_selection())
 
-    def create_ingTree (self, widget, model):
+    def create_ingTree(self, widget, model):
         debug("create_ingTree (self, widget, model):",5)
         # self.slTree = Gtk.TreeView(self.slMod)
         tree=widget
@@ -266,9 +266,12 @@ class IngredientAndPantryList:
                    ('STRING',0,4),
                    ('COMPOUND_TEXT',0,5),
                    ('text/unicode',0,6),]
-        tree.drag_source_set(Gdk.ModifierType.BUTTON1_MASK,
-                             list(Gtk.TargetEntry.new(*t) for t in targets),
-                             Gdk.DragAction.COPY | Gdk.DragAction.MOVE)
+        tree.drag_source_set(
+            Gdk.ModifierType.BUTTON1_MASK,
+            [Gtk.TargetEntry.new(*t) for t in targets],
+            Gdk.DragAction.COPY | Gdk.DragAction.MOVE,
+        )
+
         tree.enable_model_drag_dest(targets,
                                     Gdk.DragAction.COPY | Gdk.DragAction.MOVE)
         tree.connect('drag_begin', self.on_drag_begin)
@@ -621,11 +624,11 @@ class ShopGui (ShoppingList, plugin_loader.Pluggable, IngredientAndPantryList):
         self.add_entry.connect('activate',self.item_added)
         self.add_button.connect('clicked',self.item_added)
 
-    def get_catmodel (self):
-        if hasattr(self,'catmodel'): return self.catmodel
-        else:
+    def get_catmodel(self):
+        if not hasattr(self, 'catmodel'):
             self.catmodel = Gtk.ListStore(str)
-            return self.catmodel
+
+        if hasattr(self,'catmodel'): return self.catmodel
 
     def setup_cat_box (self):
         # Setup change-category widget
@@ -798,7 +801,7 @@ class ShopGui (ShoppingList, plugin_loader.Pluggable, IngredientAndPantryList):
         debug("%s selected recs: %s"%(len(recs),recs),3)
         return recs
 
-    def commit_category_orders (self, tv, space_before=None, space_after=None):
+    def commit_category_orders(self, tv, space_before=None, space_after=None):
         """Commit the order of categories to memory.
         We allow for making room before or after a given
         iter, in which case"""
@@ -807,10 +810,7 @@ class ShopGui (ShoppingList, plugin_loader.Pluggable, IngredientAndPantryList):
         last_val = -100
         while iter:
             cat = mod.get_value(iter,0)
-            if cat in self.sh.catorder_dic:
-                val = self.sh.catorder_dic[cat]
-            else:
-                val = 0
+            val = self.sh.catorder_dic[cat] if cat in self.sh.catorder_dic else 0
             if val <= last_val:
                 val = last_val + 10
                 self.sh.catorder_dic[cat] = val

@@ -202,16 +202,11 @@ class FieldEditor:
         else:
             return {}
 
-    def get_selected_values (self, ts=None):
+    def get_selected_values(self, ts=None):
         if not ts:
             ts = self.treeview.get_selection()
         mod,paths = ts.get_selected_rows()
-        values = []
-        for p in paths:
-            values.append(
-                mod.get_value(mod.get_iter(p),0)
-                )
-        return values
+        return [mod.get_value(mod.get_iter(p),0) for p in paths]
 
     def get_criteria_and_table (self):
         values = self.get_selected_values()

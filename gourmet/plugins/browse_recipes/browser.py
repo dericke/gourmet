@@ -48,10 +48,10 @@ class RecipeBrowserView(Gtk.IconView):
             self.build_model(path,val)
         self.set_model(self.models[path])
 
-    def build_model (self, path,val):
+    def build_model(self, path,val):
         if path == 'base':
             self.build_base_model()
-        elif not '>' in path:
+        elif '>' not in path:
             self.build_first_level_model(path)
         else:
             self.build_recipe_model(path,val)
@@ -107,13 +107,12 @@ class RecipeBrowserView(Gtk.IconView):
                 return 'None'
         elif attr=='rating':
             if not val: return 'Unrated'
-            else:
-                val = int(val)
-                txt = str(int(val) / 2)
-                if val % 2:
-                    txt += ' 1/2'
-                txt += ' ' + _('Stars')
-                return txt
+            val = int(val)
+            txt = str(int(val) / 2)
+            if val % 2:
+                txt += ' 1/2'
+            txt += ' ' + _('Stars')
+            return txt
         else:
             return str(val)
 

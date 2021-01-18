@@ -60,17 +60,16 @@ class html_exporter (exporter_mult):
         if not title: title = _('Recipe')
         return xml.sax.saxutils.escape(title)
 
-    def write_head (self):
+    def write_head(self):
         if self.start_html:
             self.out.write(HTML_HEADER_START)
             self.out.write("<title>%s</title>"%self.get_title())
             if self.css:
                 if self.embed_css:
                     self.out.write("<style type='text/css'><!--\n")
-                    f=open(self.css,'r')
-                    for l in f.readlines():
-                        self.out.write(l)
-                    f.close()
+                    with open(self.css,'r') as f:
+                        for l in f.readlines():
+                            self.out.write(l)
                     self.out.write("--></style>")
                 else:
                     self.out.write("<link rel='stylesheet' href='%s' type='text/css'>"%self.make_relative_link(self.css))
@@ -78,16 +77,15 @@ class html_exporter (exporter_mult):
             self.out.write('<body>')
         self.out.write('<div class="recipe" itemscope itemtype="http://schema.org/Recipe">')
 
-    def write_image (self, image):
+    def write_image(self, image):
         imgout = os.path.join(self.imagedir_absolute,"%s.jpg"%self.imgcount)
         while os.path.isfile(imgout):
             self.imgcount += 1
             imgout = os.path.join(self.imagedir_absolute,"%s.jpg"%self.imgcount)
         if not os.path.isdir(self.imagedir_absolute):
             os.mkdir(self.imagedir_absolute)
-        o = open(imgout,'wb')
-        o.write(image)
-        o.close()
+        with open(imgout,'wb') as o:
+            o.write(image)
         # we use urllib here because os.path may fsck up slashes for urls.
         self.out.write('<img src="%s" itemprop="image" alt="%s">'%(
                                                                             self.make_relative_link("%s%s.jpg"%(self.imagedir,
@@ -197,7 +195,7 @@ class html_exporter (exporter_mult):
         return linkify(filename)
 
 class website_exporter (ExporterMultirec):
-    def __init__ (self, rd, recipe_table, out, conv=None, ext='htm', copy_css=True,
+    def __init__(self, rd, recipe_table, out, conv=None, ext='htm', copy_css=True,
                   css=os.path.join(gglobals.style_dir,'default.css'),
                   imagedir='pics' + os.path.sep,
                   index_rows=['title','category','cuisine','rating','yields'],
@@ -212,9 +210,9 @@ class website_exporter (ExporterMultirec):
                 os.makedirs(out)
             to_copy = open(self.css,'r')
             print('writing css to ',styleout)
-            to_paste = open(styleout,'w')
-            to_paste.write(to_copy.read())
-            to_copy.close(); to_paste.close()
+            with open(styleout,'w') as to_paste:
+                to_paste.write(to_copy.read())
+                to_copy.close()
             self.css = styleout
         self.imagedir=imagedir
         self.index_rows=index_rows
@@ -235,17 +233,16 @@ class website_exporter (ExporterMultirec):
                                   exporter=html_exporter,
                                   exporter_kwargs=self.exportargs)
 
-    def write_header (self):
+    def write_header(self):
         self.indexfn = os.path.join(self.outdir,'index%s%s'%(os.path.extsep,self.ext))
         self.indexf = open(self.indexfn,'w')
         self.indexf.write(HTML_HEADER_START)
         self.indexf.write("<title>Recipe Index</title>")
         if self.embed_css:
             self.indexf.write("<style type='text/css'><!--\n")
-            f=open(self.css,'r')
-            for l in f.readlines():
-                self.indexf.write(l)
-            f.close()
+            with open(self.css,'r') as f:
+                for l in f.readlines():
+                    self.indexf.write(l)
             self.indexf.write("--></style>")
         else:
             self.indexf.write("<link rel='stylesheet' href='%s' type='text/css'>"%self.make_relative_link(self.css))
@@ -278,15 +275,14 @@ class website_exporter (ExporterMultirec):
         self.indexf.write('</table></div></body></html>')
         self.indexf.close()
 
-    def generate_link (self, id):
+    def generate_link(self, id):
         if id in self.added_dict:
             return self.added_dict[id]
+        rec = self.rd.get_rec(id)
+        if rec:
+            return self.generate_filename(rec,self.ext,add_id=True)
         else:
-            rec = self.rd.get_rec(id)
-            if rec:
-                return self.generate_filename(rec,self.ext,add_id=True)
-            else:
-                return None
+            return None
 
     def make_relative_link (self, filename):
         if self.outdir[-1] != os.path.sep:

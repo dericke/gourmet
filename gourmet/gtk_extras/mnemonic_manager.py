@@ -64,7 +64,7 @@ class MnemonicManager:
         widgets = collect_descendants(w)
         self.add_ui(widgets)
 
-    def add_builder (self, ui=None, ui_file=None):
+    def add_builder(self, ui=None, ui_file=None):
         """Add all mnemonic widgets in Gtk.Builder object.
 
         We can be passed a Gtk.Builder (.ui) file or a Gtk.Builder object.
@@ -79,7 +79,7 @@ class MnemonicManager:
         # Check if there are more than one window, in which case we
         # each window gets its own sub_handler
         windows = [w for w in widgets if isinstance(w,Gtk.Window)]
-        if len(windows)>0:
+        if windows:
             for w in windows:
                 self.sub_managers[w]=MnemonicManager()
                 self.sub_managers[w].add_toplevel_widget(w)
@@ -166,7 +166,7 @@ class MnemonicManager:
                 widg.show()
                 self.add_widget_mnemonic(widg)
 
-    def add_widget_mnemonic (self, w, untouchable=False, fix_untouchables=False):
+    def add_widget_mnemonic(self, w, untouchable=False, fix_untouchables=False):
         k = Gdk.keyval_name(w.get_mnemonic_keyval())
         if w.get_text().lower().replace('_','') in self.sacred_cows:
             untouchable = True; fix_untouchables=False
@@ -181,7 +181,7 @@ class MnemonicManager:
             self.untouchable_accels.append(k)
             self.untouchable_widgs.append(w)
         if k not in self.mnemonics: self.mnemonics[k]=[]
-        if not w in self.mnemonics[k]:
+        if w not in self.mnemonics[k]:
             self.mnemonics[k].append(w)
 
     def generate_new_mnemonic (self, text):
@@ -195,14 +195,13 @@ class MnemonicManager:
         self.mnemonics[text[0].lower()].append(text)
         return '_'+text
 
-    def find_alternatives (self, w, filter_untouchables = True):
+    def find_alternatives(self, w, filter_untouchables = True):
         text = w.get_text()
         if not text: return []
         cur_ind = text.find('_')+1
         alts = [text[cur_ind].lower()]
         # Now we go through and find first letters of words...
-        if cur_ind == 1: ind=2
-        else: ind = 0
+        ind = 2 if cur_ind == 1 else 0
         ind = text.find(' ',ind)
         last_letter_that_could_be_word_start = len(text)-2
         while -1 < ind <= last_letter_that_could_be_word_start:

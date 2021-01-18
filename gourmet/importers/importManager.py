@@ -231,16 +231,12 @@ class ImportManager (plugin_loader.Pluggable):
         """
         if url in self.tempfiles:
             return self.tempfiles[url]
-        else:
-            fn = url.split('/')[-1]
-            if '.' in fn:
-                ext = fn.split('.')[-1]
-            elif content_type:
-                ext = self.guess_extension(content_type)
-        if ext:
-            tf = tempfile.mktemp('.'+ext)
-        else:
-            tf = tempfile.mktemp()
+        fn = url.split('/')[-1]
+        if '.' in fn:
+            ext = fn.split('.')[-1]
+        elif content_type:
+            ext = self.guess_extension(content_type)
+        tf = tempfile.mktemp('.'+ext) if ext else tempfile.mktemp()
         self.tempfiles[url] = tf
         with open(tf, "wb") as fout:
             fout.write(data)

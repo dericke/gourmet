@@ -124,10 +124,9 @@ class DBObject:
 def db_url(file: Optional[str]=None, custom_url: Optional[str]=None) -> str:
     if custom_url is not None:
         return custom_url
-    else:
-        if file is None:
-            file = os.path.join(gglobals.gourmetdir, 'recipes.db')
-        return 'sqlite:///' + file
+    if file is None:
+        file = os.path.join(gglobals.gourmetdir, 'recipes.db')
+    return 'sqlite:///' + file
 
 class RecData (Pluggable):
 
@@ -757,9 +756,9 @@ class RecData (Pluggable):
         """Fetch one item from table and arguments"""
         return table.select(*make_simple_select_arg(criteria,table)).execute().fetchone()
 
-    def fetch_count (self, table, column, sort_by=[],**criteria):
+    def fetch_count(self, table, column, sort_by=[],**criteria):
         """Return a counted view of the table, with the count stored in the property 'count'"""
-        result =  sqlalchemy.select(
+        return sqlalchemy.select(
             [sqlalchemy.func.count(getattr(table.c,column)).label('count'),
              getattr(table.c,column)],
             *make_simple_select_arg(criteria,table),
@@ -767,7 +766,6 @@ class RecData (Pluggable):
                'order_by':make_order_by(sort_by,table,count_by=column),
                }
             ).execute().fetchall()
-        return result
 
     def fetch_len (self, table, **criteria):
         """Return the number of rows in table that match criteria
@@ -897,11 +895,10 @@ class RecData (Pluggable):
                                      order_by=make_order_by(sort_by,self.recipe_table,),
                                      ).execute().fetchall()
 
-    def get_unique_values (self, colname,table=None,**criteria):
+    def get_unique_values(self, colname,table=None,**criteria):
         """Get list of unique values for column in table."""
         if table is None: table=self.recipe_table
-        if criteria: criteria = make_simple_select_arg(criteria,table)[0]
-        else: criteria=None
+        criteria = make_simple_select_arg(criteria,table)[0] if criteria else None
         if colname=='category' and table==self.recipe_table:
             print('WARNING: you are using a hack to access category values.')
             table = self.categories_table
@@ -917,54 +914,58 @@ class RecData (Pluggable):
         if search is None:
            search = {}
 
-        if search:
-            col = getattr(self.ingredients_table.c,search['column'])
-            operator = search.get('operator','LIKE')
-            if operator=='LIKE':
-                criteria = col.like(search['search'])
-            elif operator=='REGEXP':
-                criteria = col.op('REGEXP')(search['search'])
-            elif operator == 'CONTAINS':
-                criteria = col.contains(search['search'])
-            else:
-                criteria = (col == search['search'])
-            result =  sqlalchemy.select(
+        if not search:  # return all ingredient keys with counts
+            return sqlalchemy.select(
                 [sqlalchemy.func.count(self.ingredients_table.c.ingkey).label('count'),
                  self.ingredients_table.c.ingkey],
+                **{'group_by':'ingkey',
+                   'order_by':make_order_by([],self.ingredients_table,count_by='ingkey'),
+                   }
+                ).execute().fetchall()
+
+        col = getattr(self.ingredients_table.c,search['column'])
+        operator = search.get('operator','LIKE')
+        if operator=='LIKE':
+            criteria = col.like(search['search'])
+        elif operator=='REGEXP':
+            criteria = col.op('REGEXP')(search['search'])
+        elif operator == 'CONTAINS':
+            criteria = col.contains(search['search'])
+        else:
+            criteria = (col == search['search'])
+        return (
+            sqlalchemy.select(
+                [
+                    sqlalchemy.func.count(self.ingredients_table.c.ingkey).label(
+                        'count'
+                    ),
+                    self.ingredients_table.c.ingkey,
+                ],
                 criteria,
-                **{'group_by':'ingkey',
-                   'order_by':make_order_by([],self.ingredients_table,count_by='ingkey'),
-                   }
-                ).execute().fetchall()
-        else:  # return all ingredient keys with counts
-            result =  sqlalchemy.select(
-                [sqlalchemy.func.count(self.ingredients_table.c.ingkey).label('count'),
-                 self.ingredients_table.c.ingkey],
-                **{'group_by':'ingkey',
-                   'order_by':make_order_by([],self.ingredients_table,count_by='ingkey'),
-                   }
-                ).execute().fetchall()
+                **{
+                    'group_by': 'ingkey',
+                    'order_by': make_order_by(
+                        [], self.ingredients_table, count_by='ingkey'
+                    ),
+                }
+            )
+            .execute()
+            .fetchall()
+        )
 
-        return result
-
-    def delete_by_criteria (self, table, criteria):
+    def delete_by_criteria(self, table, criteria):
         """Table is our table.
         Criteria is a dictionary of criteria to delete by.
         """
         criteria = fix_colnames(criteria,table)
-        delete_args = []
-        for k,v in list(criteria.items()):
-            delete_args.append(k==v)
+        delete_args = [k==v for k,v in list(criteria.items())]
         if len(delete_args) > 1:
             delete_args = [and_(*delete_args)]
         table.delete(*delete_args).execute()
 
-    def update_by_criteria (self, table, update_criteria, new_values_dic):
+    def update_by_criteria(self, table, update_criteria, new_values_dic):
         try:
-            to_del = []
-            for k in new_values_dic:
-                if not isinstance(k, str):
-                    to_del.append(k)
+            to_del = [k for k in new_values_dic if not isinstance(k, str)]
             for k in to_del:
                 v = new_values_dic[k]
                 del new_values_dic[k]
@@ -1189,27 +1190,33 @@ class RecData (Pluggable):
         # something for a whole bunch of ingredients...
         for i in ings: self.modify_ing(i,ingdict)
 
-    def modify_ing_and_update_keydic (self, ing, ingdict):
+    def modify_ing_and_update_keydic(self, ing, ingdict):
         """Update our key dictionary and modify our dictionary.
 
         This is a separate method from modify_ing because we only do
         this for hand-entered data, not for mass imports.
         """
         # If our ingredient has changed, update our keydic...
-        if ing.item!=ingdict.get('item',ing.item) or ing.ingkey!=ingdict.get('ingkey',ing.ingkey):
-            if ing.item and ing.ingkey:
-                self.remove_ing_from_keydic(ing.item,ing.ingkey)
-                self.add_ing_to_keydic(
-                    ingdict.get('item',ing.item),
-                    ingdict.get('ingkey',ing.ingkey)
-                    )
+        if (
+            (
+                ing.item != ingdict.get('item', ing.item)
+                or ing.ingkey != ingdict.get('ingkey', ing.ingkey)
+            )
+            and ing.item
+            and ing.ingkey
+        ):
+            self.remove_ing_from_keydic(ing.item,ing.ingkey)
+            self.add_ing_to_keydic(
+                ingdict.get('item',ing.item),
+                ingdict.get('ingkey',ing.ingkey)
+                )
         return self.modify_ing(ing,ingdict)
 
     def update_hashes (self, rec):
         rhash,ihash = recipeIdentifier.hash_recipe(rec,self)
         self.do_modify_rec(rec,{'recipe_hash':rhash,'ingredient_hash':ihash})
 
-    def find_duplicates_of_rec (self, rec, match_ingredient=True, match_recipe=True):
+    def find_duplicates_of_rec(self, rec, match_ingredient=True, match_recipe=True):
         """Return recipes that appear to be duplicates"""
         if match_ingredient and match_recipe:
             perfect_matches = self.fetch_all(ingredient_hash=rec.ingredient_hash,recipe_hash=rec.recipe_hash)
@@ -1217,14 +1224,9 @@ class RecData (Pluggable):
             perfect_matches = self.fetch_all(ingredient_hash=rec.ingredient_hash)
         else:
             perfect_matches = self.fetch_all(recipe_hash=rec.recipe_hash)
-        matches = []
         if len(perfect_matches) == 1:
             return []
-        else:
-            for r in perfect_matches:
-                if r.id != rec.id:
-                    matches.append(r)
-            return matches
+        return [r for r in perfect_matches if r.id != rec.id]
 
     def find_all_duplicates (self):
         """Return a list of sets of duplicate recipes."""
@@ -1307,12 +1309,12 @@ class RecData (Pluggable):
             print('Problem adding',dic)
             raise
 
-    def add_ings (self, dics):
+    def add_ings(self, dics):
         """Add multiple ingredient dictionaries at a time."""
         for d in dics:
             self.validate_ingdic(d)
             for k in ['refid','unit','amount','rangeamount','item','ingkey','optional','shopoptional','inggroup','position']:
-                if not k in d:
+                if k not in d:
                     d[k] = None
         try:
             # Warning: this method relies on all the dictionaries
@@ -1385,7 +1387,7 @@ class RecData (Pluggable):
     def do_add_cat (self, dic):
         return self.do_add_and_return_item(self.categories_table,dic)
 
-    def do_add_rec (self, rdict):
+    def do_add_rec(self, rdict):
         """Add a recipe based on a dictionary of properties and values."""
         self.changed=True
         if 'deleted' not in rdict:
@@ -1393,15 +1395,15 @@ class RecData (Pluggable):
         if 'id' in rdict:
             # If our dictionary has an id, then we assume we are a
             # reserved ID
-            if rdict['id'] in self.new_ids:
-                rid = rdict['id']; del rdict['id']
-                self.new_ids.remove(rid)
-                self.update_by_criteria(self.recipe_table,
-                                        {'id':rid},
-                                        rdict)
-                return self.recipe_table.select(self.recipe_table.c.id==rid).execute().fetchone()
-            else:
+            if rdict['id'] not in self.new_ids:
                 raise ValueError('New recipe created with preset id %s, but ID is not in our list of new_ids'%rdict['id'])
+            rid = rdict['id']
+            del rdict['id']
+            self.new_ids.remove(rid)
+            self.update_by_criteria(self.recipe_table,
+                                    {'id':rid},
+                                    rdict)
+            return self.recipe_table.select(self.recipe_table.c.id==rid).execute().fetchone()
         insert_statement = self.recipe_table.insert()
         select = self.recipe_table.select(self.recipe_table.c.id==insert_statement.execute(**rdict).inserted_primary_key[0])
         return select.execute().fetchone()
@@ -1443,14 +1445,11 @@ class RecData (Pluggable):
             select = table.select()
         return select.execute().fetchone()
 
-    def get_ings (self, rec):
+    def get_ings(self, rec):
         """Handed rec, return a list of ingredients.
 
         rec should be an ID or an object with an attribute ID)"""
-        if hasattr(rec,'id'):
-            id=rec.id
-        else:
-            id=rec
+        id = rec.id if hasattr(rec,'id') else rec
         return self.fetch_all(self.ingredients_table,recipe_id=id,deleted=False)
 
     def get_cats (self, rec):
@@ -1530,21 +1529,19 @@ class RecData (Pluggable):
 
     # Convenience functions for dealing with ingredients
 
-    def order_ings (self, ings):
+    def order_ings(self, ings):
         """Handed a view of ingredients, we return an alist:
         [['group'|None ['ingredient1', 'ingredient2', ...]], ... ]
         """
         defaultn = 0
         groups = {}
         group_order = {}
-        n = 0; group = 0
+        n = 0
+        group = 0
         for i in ings:
             # defaults
-            if not hasattr(i,'inggroup'):
-                group = None
-            else:
-                group=i.inggroup
-            if group == None:
+            group = None if not hasattr(i,'inggroup') else i.inggroup
+            if group is None:
                 group = n; n+=1
 
             position = getattr(i, 'position', None)
@@ -1571,7 +1568,7 @@ class RecData (Pluggable):
         last_g = -1
         for g,ii in alist:
             if isinstance(g, int):
-                if last_g == None:
+                if last_g is None:
                     final_alist[-1][1].extend(ii)
                 else:
                     final_alist.append([None,ii])
@@ -1590,14 +1587,11 @@ class RecData (Pluggable):
         for ingd in ingdicts:
             self.add_ing(ingd)
 
-    def ingview_to_lst (self, view):
+    def ingview_to_lst(self, view):
         """Handed a view of ingredient data, we output a useful list.
         The data we hand out consists of a list of tuples. Each tuple contains
         amt, unit, key, alternative?"""
-        ret = []
-        for i in view:
-            ret.append([self.get_amount(i), i.unit, i.ingkey,])
-        return ret
+        return [[self.get_amount(i), i.unit, i.ingkey,] for i in view]
 
     def get_amount (self, ing, mult=1):
         """Given an ingredient object, return the amount for it.
@@ -1655,7 +1649,7 @@ class RecData (Pluggable):
         amt = self.get_amount(ing,mult)
         return self._format_amount_string_from_amount(amt, fractions=fractions)
 
-    def _format_amount_string_from_amount (self, amt, fractions=None, unit=None):
+    def _format_amount_string_from_amount(self, amt, fractions=None, unit=None):
         """Format our amount string given an amount tuple.
 
         If fractions is None, we use the default setting from
@@ -1669,10 +1663,7 @@ class RecData (Pluggable):
         if fractions is None:
             # None means use the default value
             fractions = convert.USE_FRACTIONS
-        if unit:
-            approx = defaults.unit_rounding_guide.get(unit,0.01)
-        else:
-            approx = 0.01
+        approx = defaults.unit_rounding_guide.get(unit,0.01) if unit else 0.01
         if isinstance(amt, tuple):
             return "%s-%s"%(convert.float_to_frac(amt[0],fractions=fractions,approx=approx).strip(),
                             convert.float_to_frac(amt[1],fractions=fractions,approx=approx).strip())
@@ -1681,7 +1672,7 @@ class RecData (Pluggable):
         else:
             return ""
 
-    def get_amount_as_float (self, ing, mode=1): #1 == self.AMT_MODE_AVERAGE
+    def get_amount_as_float(self, ing, mode=1):    #1 == self.AMT_MODE_AVERAGE
         """Return a float representing our amount.
 
         If we have a range for amount, this function will ignore the range and simply
@@ -1693,19 +1684,18 @@ class RecData (Pluggable):
         amt = self.get_amount(ing)
         if isinstance(amt, (float, int, type(None))):
             return amt
+        # otherwise we do our magic
+        amt=list(amt)
+        amt.sort() # make sure these are in order
+        low,high=amt
+        if mode==self.AMT_MODE_AVERAGE: return (low+high)/2.0
+        elif mode==self.AMT_MODE_LOW: return low
+        elif mode==self.AMT_MODE_HIGH: return high # mode==self.AMT_MODE_HIGH
         else:
-            # otherwise we do our magic
-            amt=list(amt)
-            amt.sort() # make sure these are in order
-            low,high=amt
-            if mode==self.AMT_MODE_AVERAGE: return (low+high)/2.0
-            elif mode==self.AMT_MODE_LOW: return low
-            elif mode==self.AMT_MODE_HIGH: return high # mode==self.AMT_MODE_HIGH
-            else:
-                raise ValueError("%s is an invalid value for mode"%mode)
+            raise ValueError("%s is an invalid value for mode"%mode)
 
     @pluggable_method
-    def add_ing_to_keydic (self, item, key):
+    def add_ing_to_keydic(self, item, key):
         #print 'add ',item,key,'to keydic'
         if not item or not key:
             return
@@ -1715,11 +1705,7 @@ class RecData (Pluggable):
             item = item.decode('utf-8', 'replace')
         else:
             item = str(item)
-        if isinstance(key, bytes):
-            key = key.decode('utf-8', 'replace')
-        else:
-            key = str(key)
-
+        key = key.decode('utf-8', 'replace') if isinstance(key, bytes) else str(key)
         row = self.fetch_one(self.keylookup_table, item=item, ingkey=key)
         if row:
             self.do_modify(self.keylookup_table,row,{'count':row.count+1})
@@ -1759,13 +1745,10 @@ class RecData (Pluggable):
 
     # functions to undoably modify tables
 
-    def get_dict_for_obj (self, obj, keys):
+    def get_dict_for_obj(self, obj, keys):
         orig_dic = {}
         for k in keys:
-            if k=='category':
-                v = ", ".join(self.get_cats(obj))
-            else:
-                v=getattr(obj,k)
+            v = ", ".join(self.get_cats(obj)) if k=='category' else getattr(obj,k)
             orig_dic[k]=v
         return orig_dic
 
@@ -1844,12 +1827,13 @@ class RecData (Pluggable):
     def undoable_delete_ings (self, ings, history, make_visible=None):
         """Delete ingredients in list ings and add to our undo history."""
         def do_delete():
-            modded_ings = [self.modify_ing(i,{'deleted':True}) for i in ings]
             if make_visible:
+                modded_ings = [self.modify_ing(i,{'deleted':True}) for i in ings]
                 make_visible(modded_ings)
-        def undo_delete ():
-            modded_ings = [self.modify_ing(i,{'deleted':False}) for i in ings]
-            if make_visible: make_visible(modded_ings)
+        def undo_delete():
+            if make_visible:
+                modded_ings = [self.modify_ing(i,{'deleted':False}) for i in ings]
+                make_visible(modded_ings)
         obj = Undo.UndoableObject(do_delete,undo_delete,history)
         obj.perform()
 
@@ -1890,7 +1874,7 @@ class RecipeManager:
             raise AttributeError(name)
         return getattr(self.rd, name)
 
-    def key_search (self, ing):
+    def key_search(self, ing):
         """Handed a string, we search for keys that could match
         the ingredient."""
         result=self.km.look_for_key(ing)
@@ -1901,16 +1885,13 @@ class RecipeManager:
             # item of every cell.
             if len(result)>0 and result[0][1]>0.8:
                 return [a[0] for a in result]
-            else:
-                ## otherwise, we make a mad attempt to guess!
-                k=self.km.generate_key(ing)
-                l = [k]
-                l.extend([a[0] for a in result])
-                return l
+            ## otherwise, we make a mad attempt to guess!
+            k=self.km.generate_key(ing)
+            return [k, *[a[0] for a in result]]
         else:
             return None
 
-    def parse_ingredient (self, s, conv=None, get_key=True):
+    def parse_ingredient(self, s, conv=None, get_key=True):
         """Handed a string, we hand back a dictionary representing a parsed ingredient (sans recipe ID)"""
         #if conv:
         #    print 'parse_ingredient: conv argument is now ignored'
@@ -1960,11 +1941,11 @@ class RecipeManager:
                 d['item']=i.strip()
                 if get_key: d['ingkey']=self.km.get_key(i.strip())
             debug('ingredient_parser returning: %s'%d,0)
-            return d
         else:
             debug("Unable to parse %s"%s,0)
             d['item'] = s
-            return d
+
+        return d
 
     ingredient_parser = parse_ingredient
 
@@ -2001,7 +1982,7 @@ class RecipeManager:
         """Search for multiple ingredients."""
         raise NotImplementedError
 
-    def clear_remembered_optional_ings (self, recipe=None):
+    def clear_remembered_optional_ings(self, recipe=None):
         """Clear our memories of optional ingredient defaults.
 
         If handed a recipe, we clear only for the recipe we've been
@@ -2009,10 +1990,7 @@ class RecipeManager:
 
         Otherwise, we clear *all* recipes.
         """
-        if recipe:
-            vw = self.rd.get_ings(recipe)
-        else:
-            vw = self.rd.ingredients_table
+        vw = self.rd.get_ings(recipe) if recipe else self.rd.ingredients_table
         # this is ugly...
         vw1 = vw.select(shopoptional=1)
         vw2 = vw.select(shopoptional=2)
@@ -2086,10 +2064,9 @@ class dbDic:
         self.db.changed=True
         return v
 
-    def __getitem__ (self, k):
+    def __getitem__(self, k):
         if k in self.just_got: return self.just_got[k]
-        v = getattr(self.db.fetch_one(self.vw,**{self.kp:k}),self.vp)
-        return v
+        return getattr(self.db.fetch_one(self.vw,**{self.kp:k}),self.vp)
 
     def __repr__ (self):
         retstr = "<dbDic> {"
@@ -2119,11 +2096,8 @@ class dbDic:
             dics.append({self.kp:k,self.vp:store_v})
         self.vw.insert().execute(*dics)
 
-    def keys (self):
-        ret = []
-        for i in self.db.fetch_all(self.vw):
-            ret.append(getattr(i,self.kp))
-        return ret
+    def keys(self):
+        return [getattr(i,self.kp) for i in self.db.fetch_all(self.vw)]
 
     def values (self):
         ret = []

@@ -52,10 +52,8 @@ def merge_i18n():
 
 def polist():
     dst_tmpl = "share/locale/%s/LC_MESSAGES/"
-    polist = [(dst_tmpl % x, ["%s/%s.mo" % (modir(x), package)])
+    return [(dst_tmpl % x, ["%s/%s.mo" % (modir(x), package)])
               for x in langs]
-
-    return polist
 
 
 class build_i18n(Command):

@@ -98,7 +98,7 @@ class ShopEditor:
         # iter2 precedes iter1
         else: return 1
 
-    def filter_visibility_fun (self, mod, iter):
+    def filter_visibility_fun(self, mod, iter):
         if not self.search_string:
             return True
         str = mod.get_value(iter,self.search_by)
@@ -108,14 +108,18 @@ class ShopEditor:
             cat = mod.get_value(iter,self.CAT_COL)
             if cat in self.cat_to_key:
                 for itm in self.cat_to_key[cat]:
-                    if self.use_regexp:
-                        if re.search(self.search_string, itm): return True
-                    elif itm.find(self.search_string) >= 0: return True
-        if self.use_regexp:
-            if re.search(self.search_string, str): return True
-        else:
-            if str.find(self.search_string) >= 0:
-                return True
+                    if (
+                        self.use_regexp
+                        and re.search(self.search_string, itm)
+                        or not self.use_regexp
+                        and itm.find(self.search_string) >= 0
+                    ): return True
+        if (
+            self.use_regexp
+            and re.search(self.search_string, str)
+            or not self.use_regexp
+            and str.find(self.search_string) >= 0
+        ): return True
 
     def setupTreeView (self):
         self.CAT_COL = 1
@@ -131,7 +135,7 @@ class ShopEditor:
             self.treeview.append_column(col)
             self.treeview.connect('row-expanded',self.populateChild)
 
-    def tree_edited (self, renderer, path_string, text, n, head):
+    def tree_edited(self, renderer, path_string, text, n, head):
         indices = path_string.split(':')
         path = tuple( map(int, indices))
         iter = self.filteredModel.convert_iter_to_child_iter(self.filteredModel.get_iter(path))
@@ -145,10 +149,7 @@ class ShopEditor:
             msg = "Are you sure you want to change the "
             if n==self.KEY_COL: msg += 'key'
             if n==self.ITEM_COL: msg += 'item'
-            if item:
-                msg += "for \"%s from \"%s\""%(item,key)
-            else:
-                msg += " from \"%s\" "%key
+            msg += "for \"%s from \"%s\""%(item,key) if item else " from \"%s\" "%key
             msg += " to \"%s\""%text
             if not de.getBoolean(label=msg,
                                  dont_ask_cb=self.dont_ask_cb,

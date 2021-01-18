@@ -66,13 +66,12 @@ class LinkedPangoBuffer(PangoBuffer):
         if end is None:
             end = self.get_end_iter()
 
-        if include_hidden_chars is False:
+        if not include_hidden_chars:
             return super().get_text(start, end, include_hidden_chars)
-        else:
-            format_ = self.register_serialize_tagset()
-            pango_markup = self.serialize(self, format_, start, end)
-            return PangoToHtml().feed(pango_markup, self.markup_dict,
-                                      ignore_links)
+        format_ = self.register_serialize_tagset()
+        pango_markup = self.serialize(self, format_, start, end)
+        return PangoToHtml().feed(pango_markup, self.markup_dict,
+                                  ignore_links)
 
 
 class LinkedTextView(Gtk.TextView):
@@ -120,8 +119,11 @@ class LinkedTextView(Gtk.TextView):
         # Check for selection
         buffer = text_view.get_buffer()
         selection = buffer.get_selection_bounds()
-        selecting = not (len(selection) != 0 and
-                     (selection[0].get_offset() != selection[1].get_offset()))
+        selecting = (
+            len(selection) == 0
+            or selection[0].get_offset() == selection[1].get_offset()
+        )
+
 
         # Check for a left mouse click (as set by the system, not hardware).
         if (event.type == Gdk.EventType.BUTTON_RELEASE

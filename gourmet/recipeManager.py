@@ -53,14 +53,12 @@ class DatabaseShopper (shopping.Shopper):
 
 # A simple CLI for mucking about our DB without firing up gourmet proper
 class SimpleCLI:
-    def __init__  (self, rmclass=None, rmargs=None):
-        if not rmclass: self.rmclass=RecipeManager
-        else: self.rmclass = rmclass
-        if not rmargs: self.args=dbargs
-        else: self.args=rmargs
+    def __init__(self, rmclass=None, rmargs=None):
+        self.rmclass = RecipeManager if not rmclass else rmclass
+        self.args = dbargs if not rmargs else rmargs
         self.rm = self.rmclass(**self.args)
 
-    def __call__ (self):
+    def __call__(self):
         print("""Welcome to GRM's handy debugging interface straight to our database.
         You are now in the midst of our caller class. You can access your recipeManager
         class through self.rm.
@@ -70,7 +68,7 @@ class SimpleCLI:
         """)
         while True:
             inp = input('GRM>')
-            if inp == 'quit' or inp == '' or inp == '':
+            if inp in ['quit', '', '']:
                 break
             else:
                 try:

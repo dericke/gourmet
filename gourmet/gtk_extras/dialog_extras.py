@@ -189,11 +189,7 @@ class NumberDialog (ModalDialog):
         self.vbox.add(self.hbox)
         self.spinButton = Gtk.SpinButton()
 
-        if not default:
-            val = 0
-        else:
-            val = float(default)
-
+        val = 0 if not default else float(default)
         self.adjustment=Gtk.Adjustment(val,
                                        lower=min,
                                        upper=max,
@@ -286,16 +282,16 @@ class RadioDialog (ModalDialog):
 
     """A dialog to offer our user a choice between a few options."""
 
-    def __init__ (self, default=None, label="Select Option", sublabel=None, options=[],
+    def __init__(self, default=None, label="Select Option", sublabel=None, options=[],
                   parent=None,expander=None,cancel=True):
         ModalDialog.__init__(self, okay=True, label=label, sublabel=sublabel, parent=parent, expander=expander, cancel=cancel)
         # defaults value is first value...
         self.default = default
         self.setup_radio_buttons(options)
-        if options and default==None:
+        if options and default is None:
             self.ret = options[0][1]
 
-    def setup_radio_buttons (self,options):
+    def setup_radio_buttons(self,options):
         previous_radio = None
         self.buttons = []
         for label,value in options:
@@ -309,7 +305,7 @@ class RadioDialog (ModalDialog):
             if self.default==value:
                 rb.set_active(True)
                 self.widget_that_grabs_focus = rb
-        if self.default==None:
+        if self.default is None:
             self.buttons[0].set_active(True)
             self.widget_that_grabs_focus = self.buttons[0]
 
@@ -448,7 +444,7 @@ class PreferencesDialog (ModalDialog):
 
     """A dialog to get preferences from a user and return user preferences as a list."""
 
-    def __init__ (self, options=([None,None]), option_label="Option",
+    def __init__(self, options=([None,None]), option_label="Option",
                   value_label="Value", default=True, label=None, sublabel=False,
                   apply_func=None, parent=None, dont_ask_cb=None,
                   dont_ask_custom_text=None):
@@ -462,8 +458,7 @@ class PreferencesDialog (ModalDialog):
         If apply_func is True, we will have an apply button, which
         will hand the option tuple as its argument. Otherwise, okay will simply
         return the list on okay."""
-        if apply_func: modal=False
-        else: modal=True
+        modal = not apply_func
         self.apply_func = apply_func
         self.options = options
         ModalDialog.__init__(self, okay=True, label=label, sublabel=sublabel, parent=parent, modal=modal)
@@ -479,7 +474,8 @@ class PreferencesDialog (ModalDialog):
             except TypeError:
                 # not all widgets have a signal -- no biggy
                 pass
-        self.hbox = Gtk.HBox(); self.hbox.show()
+        self.hbox = Gtk.HBox()
+        self.hbox.show()
         self.hbox.add(self.table)
         self.vbox.add(self.hbox)
         if dont_ask_cb:
@@ -514,13 +510,12 @@ class PreferencesDialog (ModalDialog):
         self.apply_func(self.table.options)
         self.apply.set_sensitive(False)
 
-    def run (self):
+    def run(self):
         self.show()
         if self.apply_func:
             return
-        else:
-            Gtk.main()
-            return self.ret
+        Gtk.main()
+        return self.ret
 
     def okcb (self, *args):
         if self.apply_func:
@@ -967,10 +962,13 @@ class FileSelectorDialog:
         if self.action==Gtk.FileChooserAction.SAVE:
             self.setup_saveas_widget()
 
-    def setup_buttons (self):
+    def setup_buttons(self):
         """Set our self.buttons attribute"""
         if not self.buttons:
-            if self.action==Gtk.FileChooserAction.OPEN or self.action==Gtk.FileChooserAction.SELECT_FOLDER:
+            if self.action in [
+                Gtk.FileChooserAction.OPEN,
+                Gtk.FileChooserAction.SELECT_FOLDER,
+            ]:
                 self.buttons=(Gtk.STOCK_CANCEL,Gtk.ResponseType.CANCEL,Gtk.STOCK_OPEN,Gtk.ResponseType.OK)
             else:
                 self.buttons=(Gtk.STOCK_CANCEL,Gtk.ResponseType.CANCEL,Gtk.STOCK_OK,Gtk.ResponseType.OK)
@@ -993,24 +991,21 @@ class FileSelectorDialog:
         if self.set_filter and self.filters:
             self.fsd.set_filter(self.fsd.list_filters()[0])
 
-    def setup_saveas_widget (self):
+    def setup_saveas_widget(self):
         """Set up the filter widget."""
         if not self.filters:
             self.do_saveas = False
             return
         self.do_saveas = True
-        n = 0
         self.ext_to_filter = {}
         self.name_to_ext = {}
-        for name,mimetypes,regexps in self.filters:
+        for n, (name, mimetypes, regexps) in enumerate(self.filters):
             # name_to_ext lets us grab the correct extension from our active iter
             self.name_to_ext[name]=os.path.splitext(regexps[0])[-1]
             for r in regexps:
                 ext = os.path.splitext(r)[-1]
                 # ext_to_filter let's us select the correct iter from the extension typed in
                 self.ext_to_filter[ext]=self.fsd.list_filters()[n]
-            n += 1
-
         self.fn = None
         self.fsd.connect('notify::filter',self.change_file_extension)
         self.fsd.connect('selection-changed',self.update_filetype_widget)
@@ -1100,7 +1095,7 @@ class ImageSelectorDialog (FileSelectorDialog):
         ['Tiff Image',['image/tiff'],['*.tiff','*.TIFF']]
         ]
 
-    def __init__ (self,
+    def __init__(self,
                   title,
                   filename=None,
                   filters=IMAGE_FILTERS,
@@ -1110,7 +1105,7 @@ class ImageSelectorDialog (FileSelectorDialog):
                   ):
         FileSelectorDialog.__init__(self, title, filename, filters, action, set_filter, buttons)
         pictures_dir = get_user_special_dir(UserDirectory.DIRECTORY_PICTURES)
-        if not pictures_dir == None:
+        if pictures_dir is not None:
             self.fsd.set_current_folder(pictures_dir)
 
     def post_dialog (self):
@@ -1143,12 +1138,12 @@ def getEntry (*args, **kwargs):
     d = EntryDialog(*args, **kwargs)
     return d.run()
 
-def getBoolean (*args,**kwargs):
+def getBoolean(*args,**kwargs):
     """Run BooleanDialog, passing along all args, waiting on input and
     passing along the results."""
     d = BooleanDialog(*args,**kwargs)
     retval = d.run()
-    if retval==None:
+    if retval is None:
         raise UserCancelledError("getBoolean dialog cancelled!")
     else:
         return retval
